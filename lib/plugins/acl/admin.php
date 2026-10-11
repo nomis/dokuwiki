@@ -148,7 +148,7 @@ class admin_plugin_acl extends AdminPlugin
                 foreach ($acl as $where => $opt) {
                     foreach ($opt as $who => $perm) {
                         if ($who[0] == '@') {
-                            if ($who != '@ALL') {
+                            if ($who != '@ALL' && $who != '@INTERNAL') {
                                 $who = '@' . ltrim($auth->cleanGroup($who), '@');
                             }
                         } elseif ($who != '%USER%' && $who != '%GROUP%') { #keep wildcard as is
@@ -587,6 +587,7 @@ class admin_plugin_acl extends AdminPlugin
 
         // get special users and groups
         $this->specials[] = '@ALL';
+        $this->specials[] = '@INTERNAL';
         $this->specials[] = '@' . $conf['defaultgroup'];
         if ($conf['manager'] != '!!not set!!') {
             $this->specials = array_merge(

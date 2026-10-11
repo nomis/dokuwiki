@@ -663,6 +663,7 @@ function auth_isMember($memberlist, $user, array $groups)
     }
     $user   = $auth->cleanUser($user);
     $groups = array_map($auth->cleanGroup(...), $groups);
+    $internal = auth_isinternal();
 
     // extract the memberlist
     $members = explode(',', $memberlist);
@@ -673,6 +674,7 @@ function auth_isMember($memberlist, $user, array $groups)
     // compare cleaned values
     foreach ($members as $member) {
         if ($member == '@ALL') return true;
+        if ($member == '@INTERNAL' && $internal) return true;
         if (!$auth->isCaseSensitive()) $member = PhpString::strtolower($member);
         if ($member[0] == '@') {
             $member = $auth->cleanGroup(substr($member, 1));
@@ -745,6 +747,16 @@ function auth_aclcheck($id, $user, $groups)
     return Event::createAndTrigger('AUTH_ACL_CHECK', $data, 'auth_aclcheck_cb');
 }
 
+function auth_isinternal()
+{
+    $ip = Ip::clientIp();
+    return str_starts_with($ip, "127.")
+        || str_starts_with($ip, "10.")
+        || str_starts_with($ip, "209.16.157.")
+        || str_starts_with($ip, "2a04:5d00:70:")
+        || str_starts_with($ip, "2a00:a600:6:");
+}
+
 /**
  * default ACL check method
  *
@@ -796,6 +808,9 @@ function auth_aclcheck_cb($data)
 
     //add ALL group
     $groups[] = '@ALL';
+    if (auth_isinternal()) {
+        $groups[] = '@INTERNAL';
+    }
 
     //add User
     if ($user) $groups[] = $user;
@@ -806,7 +821,7 @@ function auth_aclcheck_cb($data)
         foreach ($matches as $match) {
             $match = preg_replace('/#.*$/', '', $match); //ignore comments
             $acl   = preg_split('/[ \t]+/', $match);
-            if (!$auth->isCaseSensitive() && $acl[1] !== '@ALL') {
+            if (!$auth->isCaseSensitive() && $acl[1] !== '@ALL' && $acl[1] !== '@INTERNAL') {
                 $acl[1] = PhpString::strtolower($acl[1]);
             }
             if (!in_array($acl[1], $groups, true)) {
@@ -836,7 +851,7 @@ function auth_aclcheck_cb($data)
             foreach ($matches as $match) {
                 $match = preg_replace('/#.*$/', '', $match); //ignore comments
                 $acl   = preg_split('/[ \t]+/', $match);
-                if (!$auth->isCaseSensitive() && $acl[1] !== '@ALL') {
+                if (!$auth->isCaseSensitive() && $acl[1] !== '@ALL' && $acl[1] !== '@INTERNAL') {
                     $acl[1] = PhpString::strtolower($acl[1]);
                 }
                 if (!in_array($acl[1], $groups, true)) {
